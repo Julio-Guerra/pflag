@@ -972,7 +972,7 @@ const defaultOutput = `      --A                         for bootstrapping, allo
       --Alongflagname             disable bounds checking
   -C, --CCC                       a boolean defaulting to true (default true)
       --D path                    set relative path for local imports
-  -E, --EEE num[=1234]            a num with NoOptDefVal (default 4321)
+  -E, --EEE[=1234]                a num with NoOptDefVal (default 4321)
       --F number                  a non-zero number (default 2.7)
       --G float                   a float that defaults to zero
       --IP ip                     IP address with no default
@@ -980,8 +980,8 @@ const defaultOutput = `      --A                         for bootstrapping, allo
       --IPNet ipNet               IP network with no default
       --Ints intSlice             int slice with zero default
       --N int                     a non-zero int (default 27)
-      --ND1 string[="bar"]        a string with NoOptDefVal (default "foo")
-      --ND2 num[=4321]            a num with NoOptDefVal (default 1234)
+      --ND1[="bar"]               a string with NoOptDefVal (default "foo")
+      --ND2[=4321]                a num with NoOptDefVal (default 1234)
       --StringArray stringArray   string array with zero default
       --StringSlice stringSlice   string slice with zero default
       --Z int                     an int that defaults to zero

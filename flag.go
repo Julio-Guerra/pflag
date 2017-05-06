@@ -649,9 +649,6 @@ func (f *FlagSet) FlagUsagesWrapped(cols int) string {
 		}
 
 		varname, usage := UnquoteUsage(flag)
-		if varname != "" {
-			line += " " + varname
-		}
 		if flag.NoOptDefVal != "" {
 			switch flag.Value.Type() {
 			case "string":
@@ -663,6 +660,8 @@ func (f *FlagSet) FlagUsagesWrapped(cols int) string {
 			default:
 				line += fmt.Sprintf("[=%s]", flag.NoOptDefVal)
 			}
+		} else if varname != "" {
+			line += " " + varname
 		}
 
 		// This special character will be replaced with spacing once the
