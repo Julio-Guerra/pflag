@@ -1,88 +1,83 @@
 package pflag
 
-import "strconv"
+import (
+	"reflect"
+	"strconv"
+)
 
 // -- int32 Value
-type int32Value int32
-
-func newInt32Value(val int32, p *int32) *int32Value {
-	*p = val
-	return (*int32Value)(p)
+type Int32Value struct {
+	Value int32
+	*DefaultValues
 }
 
-func (i *int32Value) Set(s string) error {
+func NewInt32Value(defaultValue, defaultArg interface{}) *Int32Value {
+	v, dv := NewDefaultValues(reflect.TypeOf(int32(0)), defaultValue, defaultArg)
+	return &Int32Value{
+		Value:         v.(int32),
+		DefaultValues: dv,
+	}
+}
+
+func (f *Int32Value) Set(s string) error {
 	v, err := strconv.ParseInt(s, 0, 32)
-	*i = int32Value(v)
+	if err != nil {
+		return err
+	}
+	f.Value = int32(v)
 	return err
 }
 
-func (i *int32Value) Type() string {
+func (f *Int32Value) Type() string {
 	return "int32"
 }
 
-func (i *int32Value) String() string { return strconv.FormatInt(int64(*i), 10) }
-
-func int32Conv(sval string) (interface{}, error) {
-	v, err := strconv.ParseInt(sval, 0, 32)
-	if err != nil {
-		return 0, err
-	}
-	return int32(v), nil
+func (f *Int32Value) String() string {
+	return strconv.FormatInt(int64(f.Value), 10)
 }
 
-// GetInt32 return the int32 value of a flag with the given name
-func (f *FlagSet) GetInt32(name string) (int32, error) {
-	val, err := f.getFlagType(name, "int32", int32Conv)
-	if err != nil {
-		return 0, err
-	}
-	return val.(int32), nil
-}
-
-// Int32Var defines an int32 flag with specified name, default value, and usage string.
-// The argument p points to an int32 variable in which to store the value of the flag.
-func (f *FlagSet) Int32Var(p *int32, name string, value int32, usage string) {
-	f.VarP(newInt32Value(value, p), name, "", usage)
+// Int32Var defines a int32 flag with specified name, default value, and usage string.
+// The argument p point32s to a int32 variable in which to store the value of the flag.
+func (f *FlagSet) Int32Var(p *Int32Value, name, usage string) *Flag {
+	return Int32VarP(p, name, "", usage)
 }
 
 // Int32VarP is like Int32Var, but accepts a shorthand letter that can be used after a single dash.
-func (f *FlagSet) Int32VarP(p *int32, name, shorthand string, value int32, usage string) {
-	f.VarP(newInt32Value(value, p), name, shorthand, usage)
+func (f *FlagSet) Int32VarP(p *Int32Value, name, shorthand, usage string) *Flag {
+	return f.VarP(p, name, shorthand, true, usage)
 }
 
-// Int32Var defines an int32 flag with specified name, default value, and usage string.
-// The argument p points to an int32 variable in which to store the value of the flag.
-func Int32Var(p *int32, name string, value int32, usage string) {
-	CommandLine.VarP(newInt32Value(value, p), name, "", usage)
+// Int32Var defines a int32 flag with specified name, default value, and usage string.
+// The argument p point32s to a int32 variable in which to store the value of the flag.
+func Int32Var(p *Int32Value, name, usage string) *Flag {
+	return Int32VarP(p, name, "", usage)
 }
 
 // Int32VarP is like Int32Var, but accepts a shorthand letter that can be used after a single dash.
-func Int32VarP(p *int32, name, shorthand string, value int32, usage string) {
-	CommandLine.VarP(newInt32Value(value, p), name, shorthand, usage)
+func Int32VarP(p *Int32Value, name, shorthand, usage string) *Flag {
+	return CommandLine.Int32VarP(p, name, shorthand, usage)
 }
 
-// Int32 defines an int32 flag with specified name, default value, and usage string.
-// The return value is the address of an int32 variable that stores the value of the flag.
-func (f *FlagSet) Int32(name string, value int32, usage string) *int32 {
-	p := new(int32)
-	f.Int32VarP(p, name, "", value, usage)
-	return p
-}
-
-// Int32P is like Int32, but accepts a shorthand letter that can be used after a single dash.
-func (f *FlagSet) Int32P(name, shorthand string, value int32, usage string) *int32 {
-	p := new(int32)
-	f.Int32VarP(p, name, shorthand, value, usage)
-	return p
-}
-
-// Int32 defines an int32 flag with specified name, default value, and usage string.
-// The return value is the address of an int32 variable that stores the value of the flag.
-func Int32(name string, value int32, usage string) *int32 {
-	return CommandLine.Int32P(name, "", value, usage)
+// Int32 defines a int32 flag with specified name, default value, and usage string.
+// The return value is the address of a int32 variable that stores the value of the flag.
+func (f *FlagSet) Int32(name, usage string) *Int32Value {
+	return f.Int32P(name, "", usage)
 }
 
 // Int32P is like Int32, but accepts a shorthand letter that can be used after a single dash.
-func Int32P(name, shorthand string, value int32, usage string) *int32 {
-	return CommandLine.Int32P(name, shorthand, value, usage)
+func (f *FlagSet) Int32P(name, shorthand, usage string) *Int32Value {
+	p := NewInt32Value(nil, nil)
+	f.Int32VarP(p, name, shorthand, usage)
+	return p
+}
+
+// Int32 defines a int32 flag with specified name, default value, and usage string.
+// The return value is the address of a int32 variable that stores the value of the flag.
+func Int32(name, usage string) *Int32Value {
+	return CommandLine.Int32P(name, "", usage)
+}
+
+// Int32P is like Int32, but accepts a shorthand letter that can be used after a single dash.
+func Int32P(name, shorthand, usage string) *Int32Value {
+	return CommandLine.Int32P(name, shorthand, usage)
 }

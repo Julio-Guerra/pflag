@@ -2,15 +2,13 @@ package pflag
 
 import (
 	"fmt"
-	"net"
 	"os"
 	"testing"
 )
 
-func setUpIPNet(ip *net.IPNet) *FlagSet {
+func setUpIPNet(ip *IPNetValue) *FlagSet {
 	f := NewFlagSet("test", ContinueOnError)
-	_, def, _ := net.ParseCIDR("0.0.0.0/0")
-	f.IPNetVar(ip, "address", *def, "IP Address")
+	f.IPNetVar(ip, "address", "IP Address")
 	return f
 }
 
@@ -44,8 +42,8 @@ func TestIPNet(t *testing.T) {
 	devnull, _ := os.Open(os.DevNull)
 	os.Stderr = devnull
 	for i := range testCases {
-		var addr net.IPNet
-		f := setUpIPNet(&addr)
+		addr := NewIPNetValue(nil, nil)
+		f := setUpIPNet(addr)
 
 		tc := &testCases[i]
 
@@ -58,12 +56,8 @@ func TestIPNet(t *testing.T) {
 			t.Errorf("expected failure")
 			continue
 		} else if tc.success {
-			ip, err := f.GetIPNet("address")
-			if err != nil {
-				t.Errorf("Got error trying to fetch the IP flag: %v", err)
-			}
-			if ip.String() != tc.expected {
-				t.Errorf("expected %q, got %q", tc.expected, ip.String())
+			if addr.String() != tc.expected {
+				t.Errorf("expected %q, got %q", tc.expected, addr.String())
 			}
 		}
 	}

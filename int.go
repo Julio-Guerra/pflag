@@ -1,84 +1,84 @@
 package pflag
 
-import "strconv"
+import (
+	"reflect"
+	"strconv"
+)
 
 // -- int Value
-type intValue int
-
-func newIntValue(val int, p *int) *intValue {
-	*p = val
-	return (*intValue)(p)
+type IntValue struct {
+	Value int
+	*DefaultValues
 }
 
-func (i *intValue) Set(s string) error {
-	v, err := strconv.ParseInt(s, 0, 64)
-	*i = intValue(v)
+func NewIntValue(defaultValue, defaultArg interface{}) *IntValue {
+	v, dv := NewDefaultValues(reflect.TypeOf(int(0)), defaultValue, defaultArg)
+	return &IntValue{
+		Value:         v.(int),
+		DefaultValues: dv,
+	}
+}
+
+func (f *IntValue) Set(s string) error {
+	v, err := strconv.ParseInt(s, 0, 0)
+	if err != nil {
+		return err
+	}
+	vword := int(v)
+	f.Value = vword
 	return err
 }
 
-func (i *intValue) Type() string {
+func (f *IntValue) Type() string {
 	return "int"
 }
 
-func (i *intValue) String() string { return strconv.Itoa(int(*i)) }
-
-func intConv(sval string) (interface{}, error) {
-	return strconv.Atoi(sval)
+func (f *IntValue) String() string {
+	return strconv.FormatInt(int64(f.Value), 10)
 }
 
-// GetInt return the int value of a flag with the given name
-func (f *FlagSet) GetInt(name string) (int, error) {
-	val, err := f.getFlagType(name, "int", intConv)
-	if err != nil {
-		return 0, err
-	}
-	return val.(int), nil
-}
-
-// IntVar defines an int flag with specified name, default value, and usage string.
-// The argument p points to an int variable in which to store the value of the flag.
-func (f *FlagSet) IntVar(p *int, name string, value int, usage string) {
-	f.VarP(newIntValue(value, p), name, "", usage)
+// IntVar defines a int flag with specified name, default value, and usage string.
+// The argument p points to a int variable in which to store the value of the flag.
+func (f *FlagSet) IntVar(p *IntValue, name, usage string) *Flag {
+	return f.IntVarP(p, name, "", usage)
 }
 
 // IntVarP is like IntVar, but accepts a shorthand letter that can be used after a single dash.
-func (f *FlagSet) IntVarP(p *int, name, shorthand string, value int, usage string) {
-	f.VarP(newIntValue(value, p), name, shorthand, usage)
+func (f *FlagSet) IntVarP(p *IntValue, name, shorthand, usage string) *Flag {
+	return f.VarP(p, name, shorthand, true, usage)
 }
 
-// IntVar defines an int flag with specified name, default value, and usage string.
-// The argument p points to an int variable in which to store the value of the flag.
-func IntVar(p *int, name string, value int, usage string) {
-	CommandLine.VarP(newIntValue(value, p), name, "", usage)
+// IntVar defines a int flag with specified name, default value, and usage string.
+// The argument p points to a int variable in which to store the value of the flag.
+func IntVar(p *IntValue, name, usage string) *Flag {
+	return IntVarP(p, name, "", usage)
 }
 
 // IntVarP is like IntVar, but accepts a shorthand letter that can be used after a single dash.
-func IntVarP(p *int, name, shorthand string, value int, usage string) {
-	CommandLine.VarP(newIntValue(value, p), name, shorthand, usage)
+func IntVarP(p *IntValue, name, shorthand, usage string) *Flag {
+	return CommandLine.VarP(p, name, shorthand, true, usage)
 }
 
-// Int defines an int flag with specified name, default value, and usage string.
-// The return value is the address of an int variable that stores the value of the flag.
-func (f *FlagSet) Int(name string, value int, usage string) *int {
-	p := new(int)
-	f.IntVarP(p, name, "", value, usage)
-	return p
-}
-
-// IntP is like Int, but accepts a shorthand letter that can be used after a single dash.
-func (f *FlagSet) IntP(name, shorthand string, value int, usage string) *int {
-	p := new(int)
-	f.IntVarP(p, name, shorthand, value, usage)
-	return p
-}
-
-// Int defines an int flag with specified name, default value, and usage string.
-// The return value is the address of an int variable that stores the value of the flag.
-func Int(name string, value int, usage string) *int {
-	return CommandLine.IntP(name, "", value, usage)
+// Int defines a int flag with specified name, default value, and usage string.
+// The return value is the address of a int variable that stores the value of the flag.
+func (f *FlagSet) Int(name, usage string) *IntValue {
+	return f.IntP(name, "", usage)
 }
 
 // IntP is like Int, but accepts a shorthand letter that can be used after a single dash.
-func IntP(name, shorthand string, value int, usage string) *int {
-	return CommandLine.IntP(name, shorthand, value, usage)
+func (f *FlagSet) IntP(name, shorthand, usage string) *IntValue {
+	p := NewIntValue(nil, nil)
+	f.IntVarP(p, name, shorthand, usage)
+	return p
+}
+
+// Int defines a int flag with specified name, default value, and usage string.
+// The return value is the address of a int variable that stores the value of the flag.
+func Int(name, usage string) *IntValue {
+	return CommandLine.IntP(name, "", usage)
+}
+
+// IntP is like Int, but accepts a shorthand letter that can be used after a single dash.
+func IntP(name, shorthand, usage string) *IntValue {
+	return CommandLine.IntP(name, shorthand, usage)
 }

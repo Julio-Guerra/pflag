@@ -3,82 +3,74 @@ package pflag
 import "strconv"
 
 // -- count Value
-type countValue int
-
-func newCountValue(val int, p *int) *countValue {
-	*p = val
-	return (*countValue)(p)
+type CountValue struct {
+	*IntValue
+	changed bool
 }
 
-func (i *countValue) Set(s string) error {
-	v, err := strconv.ParseInt(s, 0, 64)
-	// -1 means that no specific value was passed, so increment
-	if v == -1 {
-		*i = countValue(*i + 1)
-	} else {
-		*i = countValue(v)
+func NewCountValue(defaultValue, defaultArg int) *CountValue {
+	return &CountValue{
+		IntValue: NewIntValue(defaultValue, defaultArg),
+		changed:  false,
 	}
+}
+
+func NewStandardCountValue() *CountValue {
+	return NewCountValue(0, 1)
+}
+
+func (n *CountValue) Set(s string) error {
+	v, err := strconv.ParseInt(s, 0, 0)
+	if err != nil {
+		return err
+	}
+	vword := int(v)
+	if n.changed {
+		vword += n.IntValue.Value
+	} else {
+		n.changed = true
+	}
+
+	n.IntValue.Value = vword
 	return err
 }
 
-func (i *countValue) Type() string {
+func (_ *CountValue) Type() string {
 	return "count"
-}
-
-func (i *countValue) String() string { return strconv.Itoa(int(*i)) }
-
-func countConv(sval string) (interface{}, error) {
-	i, err := strconv.Atoi(sval)
-	if err != nil {
-		return nil, err
-	}
-	return i, nil
-}
-
-// GetCount return the int value of a flag with the given name
-func (f *FlagSet) GetCount(name string) (int, error) {
-	val, err := f.getFlagType(name, "count", countConv)
-	if err != nil {
-		return 0, err
-	}
-	return val.(int), nil
 }
 
 // CountVar defines a count flag with specified name, default value, and usage string.
 // The argument p points to an int variable in which to store the value of the flag.
 // A count flag will add 1 to its value evey time it is found on the command line
-func (f *FlagSet) CountVar(p *int, name string, usage string) {
+func (f *FlagSet) CountVar(p *CountValue, name string, usage string) {
 	f.CountVarP(p, name, "", usage)
 }
 
 // CountVarP is like CountVar only take a shorthand for the flag name.
-func (f *FlagSet) CountVarP(p *int, name, shorthand string, usage string) {
-	flag := f.VarPF(newCountValue(0, p), name, shorthand, usage)
-	flag.NoOptDefVal = "-1"
+func (f *FlagSet) CountVarP(p *CountValue, name, shorthand, usage string) *Flag {
+	return f.VarP(p, name, shorthand, true, usage)
 }
 
 // CountVar like CountVar only the flag is placed on the CommandLine instead of a given flag set
-func CountVar(p *int, name string, usage string) {
+func CountVar(p *CountValue, name, usage string) {
 	CommandLine.CountVar(p, name, usage)
 }
 
 // CountVarP is like CountVar only take a shorthand for the flag name.
-func CountVarP(p *int, name, shorthand string, usage string) {
+func CountVarP(p *CountValue, name, shorthand, usage string) {
 	CommandLine.CountVarP(p, name, shorthand, usage)
 }
 
 // Count defines a count flag with specified name, default value, and usage string.
 // The return value is the address of an int variable that stores the value of the flag.
 // A count flag will add 1 to its value evey time it is found on the command line
-func (f *FlagSet) Count(name string, usage string) *int {
-	p := new(int)
-	f.CountVarP(p, name, "", usage)
-	return p
+func (f *FlagSet) Count(name string, usage string) *CountValue {
+	return f.CountP(name, "", usage)
 }
 
 // CountP is like Count only takes a shorthand for the flag name.
-func (f *FlagSet) CountP(name, shorthand string, usage string) *int {
-	p := new(int)
+func (f *FlagSet) CountP(name, shorthand, usage string) *CountValue {
+	p := NewStandardCountValue()
 	f.CountVarP(p, name, shorthand, usage)
 	return p
 }
@@ -86,11 +78,11 @@ func (f *FlagSet) CountP(name, shorthand string, usage string) *int {
 // Count defines a count flag with specified name, default value, and usage string.
 // The return value is the address of an int variable that stores the value of the flag.
 // A count flag will add 1 to its value evey time it is found on the command line
-func Count(name string, usage string) *int {
+func Count(name, usage string) *CountValue {
 	return CommandLine.CountP(name, "", usage)
 }
 
 // CountP is like Count only takes a shorthand for the flag name.
-func CountP(name, shorthand string, usage string) *int {
+func CountP(name, shorthand string, usage string) *CountValue {
 	return CommandLine.CountP(name, shorthand, usage)
 }

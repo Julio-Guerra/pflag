@@ -10,8 +10,8 @@ import (
 )
 
 func TestGoflags(t *testing.T) {
-	goflag.String("stringFlag", "stringFlag", "stringFlag")
-	goflag.Bool("boolFlag", false, "boolFlag")
+	stringValue := goflag.String("stringFlag", "stringFlag", "stringFlag")
+	boolValue := goflag.Bool("boolFlag", false, "boolFlag")
 
 	f := NewFlagSet("test", ContinueOnError)
 
@@ -21,19 +21,11 @@ func TestGoflags(t *testing.T) {
 		t.Fatal("expected no error; get", err)
 	}
 
-	getString, err := f.GetString("stringFlag")
-	if err != nil {
-		t.Fatal("expected no error; get", err)
-	}
-	if getString != "bob" {
-		t.Fatalf("expected getString=bob but got getString=%s", getString)
+	if *stringValue != "bob" {
+		t.Fatalf("expected getString=bob but got getString=%s", *stringValue)
 	}
 
-	getBool, err := f.GetBool("boolFlag")
-	if err != nil {
-		t.Fatal("expected no error; get", err)
-	}
-	if getBool != true {
-		t.Fatalf("expected getBool=true but got getBool=%v", getBool)
+	if *boolValue != true {
+		t.Fatalf("expected getBool=true but got getBool=%v", *boolValue)
 	}
 }

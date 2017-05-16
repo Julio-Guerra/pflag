@@ -17,32 +17,45 @@ import (
 type flagValueWrapper struct {
 	inner    goflag.Value
 	flagType string
+	*DefaultValues
 }
 
-// We are just copying the boolFlag interface out of goflag as that is what
-// they use to decide if a flag should get "true" when no arg is given.
+// A goflag is a bool flag when it implements a IsBoolFlag() bool method
+// returning true.
 type goBoolFlag interface {
 	goflag.Value
 	IsBoolFlag() bool
 }
 
-func wrapFlagValue(v goflag.Value) Value {
-	// If the flag.Value happens to also be a pflag.Value, just use it directly.
-	if pv, ok := v.(Value); ok {
-		return pv
-	}
-
-	pv := &flagValueWrapper{
-		inner: v,
-	}
-
+func wrapFlagValue(v goflag.Value, defVal string) *flagValueWrapper {
 	t := reflect.TypeOf(v)
-	if t.Kind() == reflect.Interface || t.Kind() == reflect.Ptr {
+	switch t.Kind() {
+	case reflect.Interface, reflect.Ptr:
 		t = t.Elem()
 	}
 
-	pv.flagType = strings.TrimSuffix(t.Name(), "Value")
-	return pv
+	var (
+		defaultArg, defaultValue interface{}
+		typ                      reflect.Type
+	)
+	// a goflag is a bool flag when it implement a IsBoolFlag() method...
+	if fv, ok := v.(goBoolFlag); ok && fv.IsBoolFlag() {
+		defaultArg = true
+		typ = reflect.TypeOf(true)
+	} else if defVal != "" {
+		typ = reflect.TypeOf("")
+		defaultValue = defVal
+	}
+	_, dv := NewDefaultValues(typ, defaultValue, defaultArg)
+	if dft := dv.DefaultValue(); dft != "" {
+		v.Set(dft)
+	}
+
+	return &flagValueWrapper{
+		inner:         v,
+		flagType:      strings.TrimSuffix(t.Name(), "Value"),
+		DefaultValues: dv,
+	}
 }
 
 func (v *flagValueWrapper) String() string {
@@ -62,21 +75,17 @@ func (v *flagValueWrapper) Type() string {
 // with both `-v` and `--v` in flags. If the golang flag was more than a single
 // character (ex: `verbose`) it will only be accessible via `--verbose`
 func PFlagFromGoFlag(goflag *goflag.Flag) *Flag {
+	wrapped := wrapFlagValue(goflag.Value, goflag.DefValue)
 	// Remember the default value as a string; it won't change.
 	flag := &Flag{
-		Name:  goflag.Name,
-		Usage: goflag.Usage,
-		Value: wrapFlagValue(goflag.Value),
-		// Looks like golang flags don't set DefValue correctly  :-(
-		//DefValue: goflag.DefValue,
-		DefValue: goflag.Value.String(),
+		Name:      goflag.Name,
+		Usage:     goflag.Usage,
+		Value:     wrapped,
+		ExpectArg: true,
 	}
 	// Ex: if the golang flag was -v, allow both -v and --v to work
 	if len(flag.Name) == 1 {
 		flag.Shorthand = flag.Name
-	}
-	if fv, ok := goflag.Value.(goBoolFlag); ok && fv.IsBoolFlag() {
-		flag.NoOptDefVal = "true"
 	}
 	return flag
 }

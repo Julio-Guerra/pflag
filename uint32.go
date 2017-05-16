@@ -1,88 +1,83 @@
 package pflag
 
-import "strconv"
+import (
+	"reflect"
+	"strconv"
+)
 
-// -- uint32 value
-type uint32Value uint32
-
-func newUint32Value(val uint32, p *uint32) *uint32Value {
-	*p = val
-	return (*uint32Value)(p)
+// -- uint32 Value
+type UInt32Value struct {
+	Value uint32
+	*DefaultValues
 }
 
-func (i *uint32Value) Set(s string) error {
-	v, err := strconv.ParseUint(s, 0, 32)
-	*i = uint32Value(v)
+func NewUInt32Value(defaultValue, defaultArg interface{}) *UInt32Value {
+	v, dv := NewDefaultValues(reflect.TypeOf(uint32(0)), defaultValue, defaultArg)
+	return &UInt32Value{
+		Value:         v.(uint32),
+		DefaultValues: dv,
+	}
+}
+
+func (f *UInt32Value) Set(s string) error {
+	v, err := strconv.ParseInt(s, 0, 32)
+	if err != nil {
+		return err
+	}
+	f.Value = uint32(v)
 	return err
 }
 
-func (i *uint32Value) Type() string {
+func (f *UInt32Value) Type() string {
 	return "uint32"
 }
 
-func (i *uint32Value) String() string { return strconv.FormatUint(uint64(*i), 10) }
-
-func uint32Conv(sval string) (interface{}, error) {
-	v, err := strconv.ParseUint(sval, 0, 32)
-	if err != nil {
-		return 0, err
-	}
-	return uint32(v), nil
+func (f *UInt32Value) String() string {
+	return strconv.FormatUint(uint64(f.Value), 10)
 }
 
-// GetUint32 return the uint32 value of a flag with the given name
-func (f *FlagSet) GetUint32(name string) (uint32, error) {
-	val, err := f.getFlagType(name, "uint32", uint32Conv)
-	if err != nil {
-		return 0, err
-	}
-	return val.(uint32), nil
+// UInt32Var defines a uint32 flag with specified name, default value, and usage string.
+// The argument p pouint32s to a uint32 variable in which to store the value of the flag.
+func (f *FlagSet) UInt32Var(p *UInt32Value, name, usage string) *Flag {
+	return f.UInt32Var(p, name, usage)
 }
 
-// Uint32Var defines a uint32 flag with specified name, default value, and usage string.
-// The argument p points to a uint32 variable in which to store the value of the flag.
-func (f *FlagSet) Uint32Var(p *uint32, name string, value uint32, usage string) {
-	f.VarP(newUint32Value(value, p), name, "", usage)
+// UInt32VarP is like UInt32Var, but accepts a shorthand letter that can be used after a single dash.
+func (f *FlagSet) UInt32VarP(p *UInt32Value, name, shorthand, usage string) *Flag {
+	return f.VarP(p, name, shorthand, true, usage)
 }
 
-// Uint32VarP is like Uint32Var, but accepts a shorthand letter that can be used after a single dash.
-func (f *FlagSet) Uint32VarP(p *uint32, name, shorthand string, value uint32, usage string) {
-	f.VarP(newUint32Value(value, p), name, shorthand, usage)
+// UInt32Var defines a uint32 flag with specified name, default value, and usage string.
+// The argument p pouint32s to a uint32 variable in which to store the value of the flag.
+func UInt32Var(p *UInt32Value, name, usage string) *Flag {
+	return CommandLine.UInt32Var(p, name, usage)
 }
 
-// Uint32Var defines a uint32 flag with specified name, default value, and usage string.
-// The argument p points to a uint32  variable in which to store the value of the flag.
-func Uint32Var(p *uint32, name string, value uint32, usage string) {
-	CommandLine.VarP(newUint32Value(value, p), name, "", usage)
+// UInt32VarP is like UInt32Var, but accepts a shorthand letter that can be used after a single dash.
+func UInt32VarP(p *UInt32Value, name, shorthand, usage string) *Flag {
+	return CommandLine.UInt32VarP(p, name, shorthand, usage)
 }
 
-// Uint32VarP is like Uint32Var, but accepts a shorthand letter that can be used after a single dash.
-func Uint32VarP(p *uint32, name, shorthand string, value uint32, usage string) {
-	CommandLine.VarP(newUint32Value(value, p), name, shorthand, usage)
+// UInt32 defines a uint32 flag with specified name, default value, and usage string.
+// The return value is the address of a uint32 variable that stores the value of the flag.
+func (f *FlagSet) UInt32(name, usage string) *UInt32Value {
+	return f.UInt32P(name, "", usage)
 }
 
-// Uint32 defines a uint32 flag with specified name, default value, and usage string.
-// The return value is the address of a uint32  variable that stores the value of the flag.
-func (f *FlagSet) Uint32(name string, value uint32, usage string) *uint32 {
-	p := new(uint32)
-	f.Uint32VarP(p, name, "", value, usage)
+// UInt32P is like UInt32, but accepts a shorthand letter that can be used after a single dash.
+func (f *FlagSet) UInt32P(name, shorthand, usage string) *UInt32Value {
+	p := NewUInt32Value(nil, nil)
+	f.UInt32VarP(p, name, shorthand, usage)
 	return p
 }
 
-// Uint32P is like Uint32, but accepts a shorthand letter that can be used after a single dash.
-func (f *FlagSet) Uint32P(name, shorthand string, value uint32, usage string) *uint32 {
-	p := new(uint32)
-	f.Uint32VarP(p, name, shorthand, value, usage)
-	return p
+// UInt32 defines a uint32 flag with specified name, default value, and usage string.
+// The return value is the address of a uint32 variable that stores the value of the flag.
+func UInt32(name, usage string) *UInt32Value {
+	return CommandLine.UInt32P(name, "", usage)
 }
 
-// Uint32 defines a uint32 flag with specified name, default value, and usage string.
-// The return value is the address of a uint32  variable that stores the value of the flag.
-func Uint32(name string, value uint32, usage string) *uint32 {
-	return CommandLine.Uint32P(name, "", value, usage)
-}
-
-// Uint32P is like Uint32, but accepts a shorthand letter that can be used after a single dash.
-func Uint32P(name, shorthand string, value uint32, usage string) *uint32 {
-	return CommandLine.Uint32P(name, shorthand, value, usage)
+// UInt32P is like UInt32, but accepts a shorthand letter that can be used after a single dash.
+func UInt32P(name, shorthand, usage string) *UInt32Value {
+	return CommandLine.UInt32P(name, shorthand, usage)
 }

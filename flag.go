@@ -111,6 +111,16 @@ import (
 // ErrHelp is the error returned if the flag -help is invoked but no such flag is defined.
 var ErrHelp = errors.New("pflag: help requested")
 
+type getFlagValueError struct {
+	name         string
+	expectedType string
+	actualType   string
+}
+
+func (err *getFlagValueError) Error() string {
+	return fmt.Sprintf("trying to get %s value out of flag %s with type %s", err.expectedType, err.name, err.actualType)
+}
+
 // ErrorHandling defines how to handle flag parsing errors.
 type ErrorHandling int
 
@@ -160,22 +170,23 @@ type Flag struct {
 	Name                string              // name as it appears on command line
 	Shorthand           string              // one-letter abbreviated flag
 	Usage               string              // help message
+	ExpectArg           bool                // the flag expects an argument
 	Value               Value               // value as set
-	DefValue            string              // default value (as text); for usage message
-	Changed             bool                // If the user set the value (or if left to default)
-	NoOptDefVal         string              // default value (as text); if the flag is on the command line without any options
 	Deprecated          string              // If this flag is deprecated, this string is the new or now thing to use
 	Hidden              bool                // used by cobra.Command to allow flags to be hidden from help/usage text
 	ShorthandDeprecated string              // If the shorthand of this flag is deprecated, this string is the new or now thing to use
+	Present             bool                // The flag is present in the argument list
 	Annotations         map[string][]string // used by cobra.Command bash autocomple code
 }
 
 // Value is the interface to the dynamic value stored in a flag.
-// (The default value is represented as a string.)
+// When its flag does expect an argument and is present, Set() is called with
+// argument "true".
 type Value interface {
-	String() string
 	Set(string) error
 	Type() string
+	fmt.Stringer
+	DefaultValue
 }
 
 // sortFlags returns the flags as a slice in lexicographical sorted order.
@@ -340,25 +351,12 @@ func (f *FlagSet) lookup(name NormalizedName) *Flag {
 	return f.formal[name]
 }
 
-// func to return a given type for a given flag name
-func (f *FlagSet) getFlagType(name string, ftype string, convFunc func(sval string) (interface{}, error)) (interface{}, error) {
+func (f *FlagSet) getFlag(name string) (*Flag, error) {
 	flag := f.Lookup(name)
 	if flag == nil {
-		err := fmt.Errorf("flag accessed but not defined: %s", name)
-		return nil, err
+		return nil, fmt.Errorf("flag accessed but not defined: %s", name)
 	}
-
-	if flag.Value.Type() != ftype {
-		err := fmt.Errorf("trying to get %s value of flag of type %s", ftype, flag.Value.Type())
-		return nil, err
-	}
-
-	sval := flag.Value.String()
-	result, err := convFunc(sval)
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
+	return flag, nil
 }
 
 // ArgsLenAtDash will return the length of f.Args at the moment when a -- was
@@ -446,7 +444,7 @@ func (f *FlagSet) Set(name, value string) error {
 	f.actual[normalName] = flag
 	f.orderedActual = append(f.orderedActual, flag)
 
-	flag.Changed = true
+	flag.Present = true
 
 	if flag.Deprecated != "" {
 		fmt.Fprintf(f.out(), "Flag --%s has been deprecated, %s\n", flag.Name, flag.Deprecated)
@@ -472,13 +470,13 @@ func (f *FlagSet) SetAnnotation(name, key string, values []string) error {
 
 // Changed returns true if the flag was explicitly set during Parse() and false
 // otherwise
-func (f *FlagSet) Changed(name string) bool {
+func (f *FlagSet) Present(name string) bool {
 	flag := f.Lookup(name)
 	// If a flag doesn't exist, it wasn't changed....
 	if flag == nil {
 		return false
 	}
-	return flag.Changed
+	return flag.Present
 }
 
 // Set sets the value of the named command-line flag.
@@ -491,38 +489,6 @@ func Set(name, value string) error {
 func (f *FlagSet) PrintDefaults() {
 	usages := f.FlagUsages()
 	fmt.Fprint(f.out(), usages)
-}
-
-// defaultIsZeroValue returns true if the default value for this flag represents
-// a zero value.
-func (f *Flag) defaultIsZeroValue() bool {
-	switch f.Value.(type) {
-	case boolFlag:
-		return f.DefValue == "false"
-	case *durationValue:
-		// Beginning in Go 1.7, duration zero values are "0s"
-		return f.DefValue == "0" || f.DefValue == "0s"
-	case *intValue, *int8Value, *int32Value, *int64Value, *uintValue, *uint8Value, *uint16Value, *uint32Value, *uint64Value, *countValue, *float32Value, *float64Value:
-		return f.DefValue == "0"
-	case *stringValue:
-		return f.DefValue == ""
-	case *ipValue, *ipMaskValue, *ipNetValue:
-		return f.DefValue == "<nil>"
-	case *intSliceValue, *stringSliceValue, *stringArrayValue:
-		return f.DefValue == "[]"
-	default:
-		switch f.Value.String() {
-		case "false":
-			return true
-		case "<nil>":
-			return true
-		case "":
-			return true
-		case "0":
-			return true
-		}
-		return false
-	}
 }
 
 // UnquoteUsage extracts a back-quoted name from the usage
@@ -649,19 +615,19 @@ func (f *FlagSet) FlagUsagesWrapped(cols int) string {
 		}
 
 		varname, usage := UnquoteUsage(flag)
-		if flag.NoOptDefVal != "" {
+		if defVal := flag.Value.DefaultArg(); defVal != "" {
 			switch flag.Value.Type() {
 			case "string":
-				line += fmt.Sprintf("[=\"%s\"]", flag.NoOptDefVal)
+				line += fmt.Sprintf("[=\"%s\"]", defVal)
 			case "bool":
-				if flag.NoOptDefVal != "true" {
-					line += fmt.Sprintf("[=%s]", flag.NoOptDefVal)
+				if defVal != "true" {
+					line += fmt.Sprintf("[=%s]", defVal)
 				}
 			default:
-				line += fmt.Sprintf("[=%s]", flag.NoOptDefVal)
+				line += fmt.Sprintf("[=%s]", defVal)
 			}
 		} else if varname != "" {
-			line += " " + varname
+			line += "=" + varname
 		}
 
 		// This special character will be replaced with spacing once the
@@ -672,12 +638,8 @@ func (f *FlagSet) FlagUsagesWrapped(cols int) string {
 		}
 
 		line += usage
-		if !flag.defaultIsZeroValue() {
-			if flag.Value.Type() == "string" {
-				line += fmt.Sprintf(" (default %q)", flag.DefValue)
-			} else {
-				line += fmt.Sprintf(" (default %s)", flag.DefValue)
-			}
+		if noFlagVal := flag.Value.DefaultValue(); noFlagVal != "" {
+			line += fmt.Sprintf(" (defaults to \"%s\")", noFlagVal)
 		}
 
 		lines = append(lines, line)
@@ -762,27 +724,22 @@ func Args() []string { return CommandLine.args }
 // caller could create a flag that turns a comma-separated string into a slice
 // of strings by giving the slice the methods of Value; in particular, Set would
 // decompose the comma-separated string into the slice.
-func (f *FlagSet) Var(value Value, name string, usage string) {
-	f.VarP(value, name, "", usage)
+func (f *FlagSet) Var(value Value, name string, expectArg bool, usage string) *Flag {
+	return f.VarP(value, name, "", expectArg, usage)
 }
 
 // VarPF is like VarP, but returns the flag created
-func (f *FlagSet) VarPF(value Value, name, shorthand, usage string) *Flag {
+func (f *FlagSet) VarP(value Value, name, shorthand string, expectArg bool, usage string) *Flag {
 	// Remember the default value as a string; it won't change.
 	flag := &Flag{
 		Name:      name,
 		Shorthand: shorthand,
 		Usage:     usage,
 		Value:     value,
-		DefValue:  value.String(),
+		ExpectArg: expectArg,
 	}
 	f.AddFlag(flag)
 	return flag
-}
-
-// VarP is like Var, but accepts a shorthand letter that can be used after a single dash.
-func (f *FlagSet) VarP(value Value, name, shorthand, usage string) {
-	f.VarPF(value, name, shorthand, usage)
 }
 
 // AddFlag will add the flag to the FlagSet
@@ -843,13 +800,13 @@ func (f *FlagSet) AddFlagSet(newSet *FlagSet) {
 // caller could create a flag that turns a comma-separated string into a slice
 // of strings by giving the slice the methods of Value; in particular, Set would
 // decompose the comma-separated string into the slice.
-func Var(value Value, name string, usage string) {
-	CommandLine.VarP(value, name, "", usage)
+func Var(value Value, name string, expectArg bool, usage string) *Flag {
+	return VarP(value, name, "", expectArg, usage)
 }
 
 // VarP is like Var, but accepts a shorthand letter that can be used after a single dash.
-func VarP(value Value, name, shorthand, usage string) {
-	CommandLine.VarP(value, name, shorthand, usage)
+func VarP(value Value, name, shorthand string, expectArg bool, usage string) *Flag {
+	return CommandLine.VarP(value, name, shorthand, expectArg, usage)
 }
 
 // failf prints to standard error a formatted error and usage message and
@@ -873,117 +830,93 @@ func (f *FlagSet) usage() {
 	}
 }
 
-func (f *FlagSet) parseLongArg(s string, args []string, fn parseFunc) (a []string, err error) {
-	a = args
-	name := s[2:]
-	if len(name) == 0 || name[0] == '-' || name[0] == '=' {
-		err = f.failf("bad flag syntax: %s", s)
-		return
+func (f *FlagSet) parseLongOpt(opt string, args []string, fn ParseFunc) ([]string, error) {
+	o := opt[2:]
+	if o[0] == '-' || o[0] == '=' {
+		return args, f.failf("bad flag syntax: %s", opt)
 	}
 
-	split := strings.SplitN(name, "=", 2)
-	name = split[0]
-	flag, exists := f.formal[f.normalizeFlagName(name)]
+	split := strings.SplitN(o, "=", 2)
+	o = split[0]
+	flag, exists := f.formal[f.normalizeFlagName(o)]
 	if !exists {
-		if name == "help" { // special case for nice help message.
+		if o == "help" { // special case for nice help message.
 			f.usage()
-			return a, ErrHelp
+			return args, ErrHelp
 		}
-		err = f.failf("unknown flag: --%s", name)
-		return
+		return args, f.failf("unknown flag: --%s", o)
 	}
 
-	var value string
-	if len(split) == 2 {
-		// '--flag=arg'
-		value = split[1]
-	} else if flag.NoOptDefVal != "" {
-		// '--flag' (arg was optional)
-		value = flag.NoOptDefVal
-	} else if len(a) > 0 {
-		// '--flag arg'
-		value = a[0]
-		a = a[1:]
+	var optArg string
+	if !flag.ExpectArg {
+		optArg = "true"
 	} else {
-		// '--flag' (arg was required)
-		err = f.failf("flag needs an argument: %s", s)
-		return
-	}
-
-	err = fn(flag, value)
-	return
-}
-
-func (f *FlagSet) parseSingleShortArg(shorthands string, args []string, fn parseFunc) (outShorts string, outArgs []string, err error) {
-	if strings.HasPrefix(shorthands, "test.") {
-		return
-	}
-
-	outArgs = args
-	outShorts = shorthands[1:]
-	c := shorthands[0]
-
-	flag, exists := f.shorthands[c]
-	if !exists {
-		if c == 'h' { // special case for nice help message.
-			f.usage()
-			err = ErrHelp
-			return
-		}
-		err = f.failf("unknown shorthand flag: %q in -%s", c, shorthands)
-		return
-	}
-
-	var value string
-	if len(shorthands) > 2 && shorthands[1] == '=' {
-		// '-f=arg'
-		value = shorthands[2:]
-		outShorts = ""
-	} else if flag.NoOptDefVal != "" {
-		// '-f' (arg was optional)
-		value = flag.NoOptDefVal
-	} else if len(shorthands) > 1 {
-		// '-farg'
-		value = shorthands[1:]
-		outShorts = ""
-	} else if len(args) > 0 {
-		// '-f arg'
-		value = args[0]
-		outArgs = args[1:]
-	} else {
-		// '-f' (arg was required)
-		err = f.failf("flag needs an argument: %q in -%s", c, shorthands)
-		return
-	}
-
-	if flag.ShorthandDeprecated != "" {
-		fmt.Fprintf(f.out(), "Flag shorthand -%s has been deprecated, %s\n", flag.Shorthand, flag.ShorthandDeprecated)
-	}
-
-	err = fn(flag, value)
-	return
-}
-
-func (f *FlagSet) parseShortArg(s string, args []string, fn parseFunc) (a []string, err error) {
-	a = args
-	shorthands := s[1:]
-
-	// "shorthands" can be a series of shorthand letters of flags (e.g. "-vvv").
-	for len(shorthands) > 0 {
-		shorthands, a, err = f.parseSingleShortArg(shorthands, args, fn)
-		if err != nil {
-			return
+		if len(split) == 2 { // '--option=arg'
+			optArg = split[1]
+		} else if len(args) > 0 && args[0][0] != '-' { // '--option' 'arg'
+			optArg = args[0]
+			args = args[1:]
+		} else if da := flag.Value.DefaultArg(); da != "" { // '--option'
+			optArg = da
+		} else {
+			return args, f.failf("flag needs an argument: %s", o, opt)
 		}
 	}
 
-	return
+	return args, fn(flag, optArg)
 }
 
-func (f *FlagSet) parseArgs(args []string, fn parseFunc) (err error) {
+func (f *FlagSet) parseShortOpt(opt string, args []string, fn ParseFunc) ([]string, error) {
+	if strings.HasPrefix(opt, "test.") {
+		return args, nil
+	}
+
+	for i := 1; i < len(opt); i++ {
+		o := opt[i]
+		flag, exists := f.shorthands[o]
+		if !exists {
+			if o == 'h' { // special help message case
+				f.usage()
+				return args, ErrHelp
+			}
+			return args, f.failf("unknown shorthand flag: %c in %s", o, opt)
+		}
+
+		if flag.ShorthandDeprecated != "" {
+			fmt.Fprintf(f.out(), "Flag shorthand -%s has been deprecated, %s\n", flag.Shorthand, flag.ShorthandDeprecated)
+		}
+
+		var optArg string
+		if !flag.ExpectArg { // '-XoX' 'X'
+			optArg = "true"
+		} else {
+			if len(opt[i+1:]) == 0 { // '-Xo'
+				if len(args) > 0 && args[0][0] != '-' { // '-Xo' 'arg'
+					optArg = args[0]
+					args = args[1:]
+				} else if da := flag.Value.DefaultArg(); da != "" { // '-Xo' '-X'
+					optArg = da
+				} else {
+					return args, f.failf("flag needs an argument: -%c in %s", o, opt)
+				}
+			} else { // '-Xoarg'
+				optArg = opt[i+1:]
+				i = len(opt)
+			}
+		}
+
+		if err := fn(flag, optArg); err != nil {
+			return args, err
+		}
+	}
+	return args, nil
+}
+
+func (f *FlagSet) parseArgs(args []string, fn ParseFunc) (err error) {
 	for len(args) > 0 {
 		s := args[0]
 		args = args[1:]
-		if len(s) == 0 || s[0] != '-' || len(s) == 1 {
+		if len(s) <= 1 || s[0] != '-' {
 			if !f.interspersed {
 				f.args = append(f.args, s)
 				f.args = append(f.args, args...)
@@ -993,15 +926,17 @@ func (f *FlagSet) parseArgs(args []string, fn parseFunc) (err error) {
 			continue
 		}
 
-		if s[1] == '-' {
-			if len(s) == 2 { // "--" terminates the flags
-				f.argsLenAtDash = len(f.args)
-				f.args = append(f.args, args...)
-				break
-			}
-			args, err = f.parseLongArg(s, args, fn)
-		} else {
-			args, err = f.parseShortArg(s, args, fn)
+		if len(s) == 2 && s == "--" { // "--" terminates the flags
+			f.argsLenAtDash = len(f.args)
+			f.args = append(f.args, args...)
+			break
+		}
+
+		switch s[0:2] {
+		case "--":
+			args, err = f.parseLongOpt(s, args, fn)
+		default:
+			args, err = f.parseShortOpt(s, args, fn)
 		}
 		if err != nil {
 			return
@@ -1015,40 +950,19 @@ func (f *FlagSet) parseArgs(args []string, fn parseFunc) (err error) {
 // are defined and before flags are accessed by the program.
 // The return value will be ErrHelp if -help was set but not defined.
 func (f *FlagSet) Parse(arguments []string) error {
-	f.parsed = true
-
-	if len(arguments) < 0 {
-		return nil
-	}
-
-	f.args = make([]string, 0, len(arguments))
-
-	set := func(flag *Flag, value string) error {
-		return f.Set(flag.Name, value)
-	}
-
-	err := f.parseArgs(arguments, set)
-	if err != nil {
-		switch f.errorHandling {
-		case ContinueOnError:
-			return err
-		case ExitOnError:
-			os.Exit(2)
-		case PanicOnError:
-			panic(err)
-		}
-	}
-	return nil
+	return f.ParseAll(arguments, func(flag *Flag, value string) error {
+		return f.Set(flag.Name, strings.Trim(value, " "))
+	})
 }
 
-type parseFunc func(flag *Flag, value string) error
+type ParseFunc func(flag *Flag, value string) error
 
 // ParseAll parses flag definitions from the argument list, which should not
 // include the command name. The arguments for fn are flag and value. Must be
 // called after all flags in the FlagSet are defined and before flags are
 // accessed by the program. The return value will be ErrHelp if -help was set
 // but not defined.
-func (f *FlagSet) ParseAll(arguments []string, fn func(flag *Flag, value string) error) error {
+func (f *FlagSet) ParseAll(arguments []string, fn ParseFunc) error {
 	f.parsed = true
 	f.args = make([]string, 0, len(arguments))
 

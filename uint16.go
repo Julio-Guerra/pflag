@@ -1,88 +1,83 @@
 package pflag
 
-import "strconv"
+import (
+	"reflect"
+	"strconv"
+)
 
-// -- uint16 value
-type uint16Value uint16
-
-func newUint16Value(val uint16, p *uint16) *uint16Value {
-	*p = val
-	return (*uint16Value)(p)
+// -- uint16 Value
+type UInt16Value struct {
+	Value uint16
+	*DefaultValues
 }
 
-func (i *uint16Value) Set(s string) error {
-	v, err := strconv.ParseUint(s, 0, 16)
-	*i = uint16Value(v)
+func NewUInt16Value(defaultValue, defaultArg interface{}) *UInt16Value {
+	v, dv := NewDefaultValues(reflect.TypeOf(uint16(0)), defaultValue, defaultArg)
+	return &UInt16Value{
+		Value:         v.(uint16),
+		DefaultValues: dv,
+	}
+}
+
+func (f *UInt16Value) Set(s string) error {
+	v, err := strconv.ParseInt(s, 0, 16)
+	if err != nil {
+		return err
+	}
+	f.Value = uint16(v)
 	return err
 }
 
-func (i *uint16Value) Type() string {
+func (f *UInt16Value) Type() string {
 	return "uint16"
 }
 
-func (i *uint16Value) String() string { return strconv.FormatUint(uint64(*i), 10) }
-
-func uint16Conv(sval string) (interface{}, error) {
-	v, err := strconv.ParseUint(sval, 0, 16)
-	if err != nil {
-		return 0, err
-	}
-	return uint16(v), nil
+func (f *UInt16Value) String() string {
+	return strconv.FormatUint(uint64(f.Value), 10)
 }
 
-// GetUint16 return the uint16 value of a flag with the given name
-func (f *FlagSet) GetUint16(name string) (uint16, error) {
-	val, err := f.getFlagType(name, "uint16", uint16Conv)
-	if err != nil {
-		return 0, err
-	}
-	return val.(uint16), nil
+// UInt16Var defines a uint16 flag with specified name, default value, and usage string.
+// The argument p pouint16s to a uint16 variable in which to store the value of the flag.
+func (f *FlagSet) UInt16Var(p *UInt16Value, name, usage string) *Flag {
+	return f.UInt16VarP(p, name, "", usage)
 }
 
-// Uint16Var defines a uint flag with specified name, default value, and usage string.
-// The argument p points to a uint variable in which to store the value of the flag.
-func (f *FlagSet) Uint16Var(p *uint16, name string, value uint16, usage string) {
-	f.VarP(newUint16Value(value, p), name, "", usage)
+// UInt16VarP is like UInt16Var, but accepts a shorthand letter that can be used after a single dash.
+func (f *FlagSet) UInt16VarP(p *UInt16Value, name, shorthand, usage string) *Flag {
+	return f.VarP(p, name, shorthand, true, usage)
 }
 
-// Uint16VarP is like Uint16Var, but accepts a shorthand letter that can be used after a single dash.
-func (f *FlagSet) Uint16VarP(p *uint16, name, shorthand string, value uint16, usage string) {
-	f.VarP(newUint16Value(value, p), name, shorthand, usage)
+// UInt16Var defines a uint16 flag with specified name, default value, and usage string.
+// The argument p pouint16s to a uint16 variable in which to store the value of the flag.
+func UInt16Var(p *UInt16Value, name, usage string) *Flag {
+	return CommandLine.UInt16Var(p, name, usage)
 }
 
-// Uint16Var defines a uint flag with specified name, default value, and usage string.
-// The argument p points to a uint  variable in which to store the value of the flag.
-func Uint16Var(p *uint16, name string, value uint16, usage string) {
-	CommandLine.VarP(newUint16Value(value, p), name, "", usage)
+// UInt16VarP is like UInt16Var, but accepts a shorthand letter that can be used after a single dash.
+func UInt16VarP(p *UInt16Value, name, shorthand, usage string) *Flag {
+	return CommandLine.UInt16VarP(p, name, shorthand, usage)
 }
 
-// Uint16VarP is like Uint16Var, but accepts a shorthand letter that can be used after a single dash.
-func Uint16VarP(p *uint16, name, shorthand string, value uint16, usage string) {
-	CommandLine.VarP(newUint16Value(value, p), name, shorthand, usage)
+// UInt16 defines a uint16 flag with specified name, default value, and usage string.
+// The return value is the address of a uint16 variable that stores the value of the flag.
+func (f *FlagSet) UInt16(name, usage string) *UInt16Value {
+	return f.UInt16P(name, "", usage)
 }
 
-// Uint16 defines a uint flag with specified name, default value, and usage string.
-// The return value is the address of a uint  variable that stores the value of the flag.
-func (f *FlagSet) Uint16(name string, value uint16, usage string) *uint16 {
-	p := new(uint16)
-	f.Uint16VarP(p, name, "", value, usage)
+// UInt16P is like UInt16, but accepts a shorthand letter that can be used after a single dash.
+func (f *FlagSet) UInt16P(name, shorthand, usage string) *UInt16Value {
+	p := NewUInt16Value(nil, nil)
+	f.UInt16VarP(p, name, shorthand, usage)
 	return p
 }
 
-// Uint16P is like Uint16, but accepts a shorthand letter that can be used after a single dash.
-func (f *FlagSet) Uint16P(name, shorthand string, value uint16, usage string) *uint16 {
-	p := new(uint16)
-	f.Uint16VarP(p, name, shorthand, value, usage)
-	return p
+// UInt16 defines a uint16 flag with specified name, default value, and usage string.
+// The return value is the address of a uint16 variable that stores the value of the flag.
+func UInt16(name, usage string) *UInt16Value {
+	return CommandLine.UInt16P(name, "", usage)
 }
 
-// Uint16 defines a uint flag with specified name, default value, and usage string.
-// The return value is the address of a uint  variable that stores the value of the flag.
-func Uint16(name string, value uint16, usage string) *uint16 {
-	return CommandLine.Uint16P(name, "", value, usage)
-}
-
-// Uint16P is like Uint16, but accepts a shorthand letter that can be used after a single dash.
-func Uint16P(name, shorthand string, value uint16, usage string) *uint16 {
-	return CommandLine.Uint16P(name, shorthand, value, usage)
+// UInt16P is like UInt16, but accepts a shorthand letter that can be used after a single dash.
+func UInt16P(name, shorthand, usage string) *UInt16Value {
+	return CommandLine.UInt16P(name, shorthand, usage)
 }

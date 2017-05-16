@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func setUpCount(c *int) *FlagSet {
+func setUpCount(c *CountValue) *FlagSet {
 	f := NewFlagSet("test", ContinueOnError)
 	f.CountVarP(c, "verbose", "v", "a counter")
 	return f
@@ -17,18 +17,17 @@ func TestCount(t *testing.T) {
 		success  bool
 		expected int
 	}{
-		{[]string{"-vvv"}, true, 3},
 		{[]string{"-v", "-v", "-v"}, true, 3},
 		{[]string{"-v", "--verbose", "-v"}, true, 3},
-		{[]string{"-v=3", "-v"}, true, 4},
-		{[]string{"-v=a"}, false, 0},
+		{[]string{"-v3", "-v"}, true, 4},
+		{[]string{"-va"}, false, 0},
 	}
 
 	devnull, _ := os.Open(os.DevNull)
 	os.Stderr = devnull
 	for i := range testCases {
-		var count int
-		f := setUpCount(&count)
+		count := NewStandardCountValue()
+		f := setUpCount(count)
 
 		tc := &testCases[i]
 
@@ -40,12 +39,8 @@ func TestCount(t *testing.T) {
 			t.Errorf("expected failure, got success")
 			continue
 		} else if tc.success {
-			c, err := f.GetCount("verbose")
-			if err != nil {
-				t.Errorf("Got error trying to fetch the counter flag")
-			}
-			if c != tc.expected {
-				t.Errorf("expected %q, got %q", tc.expected, c)
+			if count.Value != tc.expected {
+				t.Errorf("expected %q, got %q", tc.expected, count.Value)
 			}
 		}
 	}

@@ -2,14 +2,13 @@ package pflag
 
 import (
 	"fmt"
-	"net"
 	"os"
 	"testing"
 )
 
-func setUpIP(ip *net.IP) *FlagSet {
+func setUpIP(ip *IPValue) *FlagSet {
 	f := NewFlagSet("test", ContinueOnError)
-	f.IPVar(ip, "address", net.ParseIP("0.0.0.0"), "IP Address")
+	f.IPVar(ip, "address", "IP Address")
 	return f
 }
 
@@ -37,8 +36,8 @@ func TestIP(t *testing.T) {
 	devnull, _ := os.Open(os.DevNull)
 	os.Stderr = devnull
 	for i := range testCases {
-		var addr net.IP
-		f := setUpIP(&addr)
+		addr := NewIPValue(nil, nil)
+		f := setUpIP(addr)
 
 		tc := &testCases[i]
 
@@ -51,12 +50,8 @@ func TestIP(t *testing.T) {
 			t.Errorf("expected failure")
 			continue
 		} else if tc.success {
-			ip, err := f.GetIP("address")
-			if err != nil {
-				t.Errorf("Got error trying to fetch the IP flag: %v", err)
-			}
-			if ip.String() != tc.expected {
-				t.Errorf("expected %q, got %q", tc.expected, ip.String())
+			if addr.String() != tc.expected {
+				t.Errorf("expected %q, got %q", tc.expected, addr.String())
 			}
 		}
 	}

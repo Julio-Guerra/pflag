@@ -21,10 +21,6 @@ const (
 
 const strTriStateMaybe = "maybe"
 
-func (v *triStateValue) IsBoolFlag() bool {
-	return true
-}
-
 func (v *triStateValue) Get() interface{} {
 	return triStateValue(*v)
 }
@@ -50,6 +46,14 @@ func (v *triStateValue) String() string {
 	return strconv.FormatBool(*v == triStateTrue)
 }
 
+func (v *triStateValue) DefaultArg() string {
+	return "true"
+}
+
+func (v *triStateValue) DefaultValue() string {
+	return ""
+}
+
 // The type of the flag as required by the pflag.Value interface
 func (v *triStateValue) Type() string {
 	return "version"
@@ -58,8 +62,7 @@ func (v *triStateValue) Type() string {
 func setUpFlagSet(tristate *triStateValue) *FlagSet {
 	f := NewFlagSet("test", ContinueOnError)
 	*tristate = triStateFalse
-	flag := f.VarPF(tristate, "tristate", "t", "tristate value (true, maybe or false)")
-	flag.NoOptDefVal = "true"
+	f.VarP(tristate, "tristate", "t", true, "tristate value (true, maybe or false)")
 	return f
 }
 
@@ -102,16 +105,15 @@ func TestShortFlag(t *testing.T) {
 func TestShortFlagExtraArgument(t *testing.T) {
 	var tristate triStateValue
 	f := setUpFlagSet(&tristate)
-	// The"maybe"turns into an arg, since short boolean options will only do true/false
 	err := f.Parse([]string{"-t", "maybe"})
 	if err != nil {
 		t.Fatal("expected no error; got", err)
 	}
-	if tristate != triStateTrue {
+	if tristate != triStateMaybe {
 		t.Fatal("expected", triStateTrue, "(triStateTrue) but got", tristate, "instead")
 	}
 	args := f.Args()
-	if len(args) != 1 || args[0] != "maybe" {
+	if len(args) != 0 {
 		t.Fatal("expected an extra 'maybe' argument to stick around")
 	}
 }
@@ -164,16 +166,16 @@ func TestInvalidValue(t *testing.T) {
 }
 
 func TestBoolP(t *testing.T) {
-	b := BoolP("bool", "b", false, "bool value in CommandLine")
-	c := BoolP("c", "c", false, "other bool value")
+	b, _ := BoolP("bool", "b", "bool value in CommandLine")
+	c, _ := BoolP("c", "c", "other bool value")
 	args := []string{"--bool"}
 	if err := CommandLine.Parse(args); err != nil {
 		t.Error("expected no error, got ", err)
 	}
-	if *b != true {
-		t.Errorf("expected b=true got b=%v", *b)
+	if b.Value != true {
+		t.Errorf("expected b=true got b=%v", b.Value)
 	}
-	if *c != false {
-		t.Errorf("expect c=false got c=%v", *c)
+	if c.Value != false {
+		t.Errorf("expect c=false got c=%v", c.Value)
 	}
 }

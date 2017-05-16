@@ -11,38 +11,28 @@ import (
 	"testing"
 )
 
-func setUpISFlagSet(isp *[]int) *FlagSet {
+func setUpISFlagSet(isp *IntSliceValue) *FlagSet {
 	f := NewFlagSet("test", ContinueOnError)
-	f.IntSliceVar(isp, "is", []int{}, "Command separated list!")
-	return f
-}
-
-func setUpISFlagSetWithDefault(isp *[]int) *FlagSet {
-	f := NewFlagSet("test", ContinueOnError)
-	f.IntSliceVar(isp, "is", []int{0, 1}, "Command separated list!")
+	f.IntSliceVar(isp, "is", "Command separated list!")
 	return f
 }
 
 func TestEmptyIS(t *testing.T) {
-	var is []int
-	f := setUpISFlagSet(&is)
+	is := NewIntSliceValue(nil, nil)
+	f := setUpISFlagSet(is)
 	err := f.Parse([]string{})
 	if err != nil {
 		t.Fatal("expected no error; got", err)
 	}
 
-	getIS, err := f.GetIntSlice("is")
-	if err != nil {
-		t.Fatal("got an error from GetIntSlice():", err)
-	}
-	if len(getIS) != 0 {
-		t.Fatalf("got is %v with len=%d but expected length=0", getIS, len(getIS))
+	if len(is.Value) != 0 {
+		t.Fatalf("got is %v with len=%d but expected length=0", is.Value, len(is.Value))
 	}
 }
 
 func TestIS(t *testing.T) {
-	var is []int
-	f := setUpISFlagSet(&is)
+	is := NewIntSliceValue(nil, nil)
+	f := setUpISFlagSet(is)
 
 	vals := []string{"1", "2", "4", "3"}
 	arg := fmt.Sprintf("--is=%s", strings.Join(vals, ","))
@@ -50,33 +40,20 @@ func TestIS(t *testing.T) {
 	if err != nil {
 		t.Fatal("expected no error; got", err)
 	}
-	for i, v := range is {
+	for i, v := range is.Value {
 		d, err := strconv.Atoi(vals[i])
 		if err != nil {
 			t.Fatalf("got error: %v", err)
 		}
-		if d != v {
-			t.Fatalf("expected is[%d] to be %s but got: %d", i, vals[i], v)
-		}
-	}
-	getIS, err := f.GetIntSlice("is")
-	if err != nil {
-		t.Fatalf("got error: %v", err)
-	}
-	for i, v := range getIS {
-		d, err := strconv.Atoi(vals[i])
-		if err != nil {
-			t.Fatalf("got error: %v", err)
-		}
-		if d != v {
-			t.Fatalf("expected is[%d] to be %s but got: %d from GetIntSlice", i, vals[i], v)
+		if actual := v.(*IntValue).Value; d != actual {
+			t.Fatalf("expected is[%d] to be %s but got: %d", i, vals[i], actual)
 		}
 	}
 }
 
 func TestISDefault(t *testing.T) {
-	var is []int
-	f := setUpISFlagSetWithDefault(&is)
+	is := NewIntSliceValue([]int{0, 1}, nil)
+	f := setUpISFlagSet(is)
 
 	vals := []string{"0", "1"}
 
@@ -84,34 +61,20 @@ func TestISDefault(t *testing.T) {
 	if err != nil {
 		t.Fatal("expected no error; got", err)
 	}
-	for i, v := range is {
+	for i, v := range is.Value {
 		d, err := strconv.Atoi(vals[i])
 		if err != nil {
 			t.Fatalf("got error: %v", err)
 		}
-		if d != v {
-			t.Fatalf("expected is[%d] to be %d but got: %d", i, d, v)
-		}
-	}
-
-	getIS, err := f.GetIntSlice("is")
-	if err != nil {
-		t.Fatal("got an error from GetIntSlice():", err)
-	}
-	for i, v := range getIS {
-		d, err := strconv.Atoi(vals[i])
-		if err != nil {
-			t.Fatal("got an error from GetIntSlice():", err)
-		}
-		if d != v {
-			t.Fatalf("expected is[%d] to be %d from GetIntSlice but got: %d", i, d, v)
+		if actual := v.(*IntValue).Value; d != actual {
+			t.Fatalf("expected is[%d] to be %d but got: %d", i, d, actual)
 		}
 	}
 }
 
 func TestISWithDefault(t *testing.T) {
-	var is []int
-	f := setUpISFlagSetWithDefault(&is)
+	is := NewIntSliceValue([]int{0, 1}, nil)
+	f := setUpISFlagSet(is)
 
 	vals := []string{"1", "2"}
 	arg := fmt.Sprintf("--is=%s", strings.Join(vals, ","))
@@ -119,34 +82,21 @@ func TestISWithDefault(t *testing.T) {
 	if err != nil {
 		t.Fatal("expected no error; got", err)
 	}
-	for i, v := range is {
-		d, err := strconv.Atoi(vals[i])
-		if err != nil {
-			t.Fatalf("got error: %v", err)
-		}
-		if d != v {
-			t.Fatalf("expected is[%d] to be %d but got: %d", i, d, v)
-		}
-	}
 
-	getIS, err := f.GetIntSlice("is")
-	if err != nil {
-		t.Fatal("got an error from GetIntSlice():", err)
-	}
-	for i, v := range getIS {
+	for i, v := range is.Value {
 		d, err := strconv.Atoi(vals[i])
 		if err != nil {
 			t.Fatalf("got error: %v", err)
 		}
-		if d != v {
-			t.Fatalf("expected is[%d] to be %d from GetIntSlice but got: %d", i, d, v)
+		if actual := v.(*IntValue).Value; d != actual {
+			t.Fatalf("expected is[%d] to be %d but got: %d", i, d, actual)
 		}
 	}
 }
 
 func TestISCalledTwice(t *testing.T) {
-	var is []int
-	f := setUpISFlagSet(&is)
+	is := NewIntSliceValue(nil, nil)
+	f := setUpISFlagSet(is)
 
 	in := []string{"1,2", "3"}
 	expected := []int{1, 2, 3}
@@ -157,9 +107,10 @@ func TestISCalledTwice(t *testing.T) {
 	if err != nil {
 		t.Fatal("expected no error; got", err)
 	}
-	for i, v := range is {
-		if expected[i] != v {
-			t.Fatalf("expected is[%d] to be %d but got: %d", i, expected[i], v)
+
+	for i, v := range is.Value {
+		if actual := v.(*IntValue).Value; expected[i] != actual {
+			t.Fatalf("expected is[%d] to be %d but got: %d", i, expected[i], actual)
 		}
 	}
 }

@@ -1,80 +1,78 @@
 package pflag
 
-// -- string Value
-type stringValue string
+import (
+	"reflect"
+)
 
-func newStringValue(val string, p *string) *stringValue {
-	*p = val
-	return (*stringValue)(p)
+// -- string Value
+type StringValue struct {
+	Value string
+	*DefaultValues
 }
 
-func (s *stringValue) Set(val string) error {
-	*s = stringValue(val)
+func NewStringValue(defaultValue, defaultArg interface{}) *StringValue {
+	v, dv := NewDefaultValues(reflect.TypeOf(""), defaultValue, defaultArg)
+	return &StringValue{
+		Value:         v.(string),
+		DefaultValues: dv,
+	}
+}
+
+func (f *StringValue) Set(s string) error {
+	f.Value = s
 	return nil
 }
-func (s *stringValue) Type() string {
+
+func (f *StringValue) Type() string {
 	return "string"
 }
 
-func (s *stringValue) String() string { return string(*s) }
-
-func stringConv(sval string) (interface{}, error) {
-	return sval, nil
-}
-
-// GetString return the string value of a flag with the given name
-func (f *FlagSet) GetString(name string) (string, error) {
-	val, err := f.getFlagType(name, "string", stringConv)
-	if err != nil {
-		return "", err
-	}
-	return val.(string), nil
+func (f *StringValue) String() string {
+	return f.Value
 }
 
 // StringVar defines a string flag with specified name, default value, and usage string.
-// The argument p points to a string variable in which to store the value of the flag.
-func (f *FlagSet) StringVar(p *string, name string, value string, usage string) {
-	f.VarP(newStringValue(value, p), name, "", usage)
+// The argument p postrings to a string variable in which to store the value of the flag.
+func (f *FlagSet) StringVar(p *StringValue, name, usage string) *Flag {
+	return f.StringVarP(p, name, "", usage)
 }
 
 // StringVarP is like StringVar, but accepts a shorthand letter that can be used after a single dash.
-func (f *FlagSet) StringVarP(p *string, name, shorthand string, value string, usage string) {
-	f.VarP(newStringValue(value, p), name, shorthand, usage)
+func (f *FlagSet) StringVarP(p *StringValue, name, shorthand, usage string) *Flag {
+	return f.VarP(p, name, shorthand, true, usage)
 }
 
 // StringVar defines a string flag with specified name, default value, and usage string.
-// The argument p points to a string variable in which to store the value of the flag.
-func StringVar(p *string, name string, value string, usage string) {
-	CommandLine.VarP(newStringValue(value, p), name, "", usage)
+// The argument p postrings to a string variable in which to store the value of the flag.
+func StringVar(p *StringValue, name, usage string) *Flag {
+	return CommandLine.StringVarP(p, name, "", usage)
 }
 
 // StringVarP is like StringVar, but accepts a shorthand letter that can be used after a single dash.
-func StringVarP(p *string, name, shorthand string, value string, usage string) {
-	CommandLine.VarP(newStringValue(value, p), name, shorthand, usage)
+func StringVarP(p *StringValue, name, shorthand, usage string) *Flag {
+	return CommandLine.StringVarP(p, name, shorthand, usage)
 }
 
 // String defines a string flag with specified name, default value, and usage string.
 // The return value is the address of a string variable that stores the value of the flag.
-func (f *FlagSet) String(name string, value string, usage string) *string {
-	p := new(string)
-	f.StringVarP(p, name, "", value, usage)
-	return p
+func (f *FlagSet) String(name, usage string) *StringValue {
+	return f.StringP(name, "", usage)
 }
 
 // StringP is like String, but accepts a shorthand letter that can be used after a single dash.
-func (f *FlagSet) StringP(name, shorthand string, value string, usage string) *string {
-	p := new(string)
-	f.StringVarP(p, name, shorthand, value, usage)
+func (f *FlagSet) StringP(name, shorthand, usage string) *StringValue {
+	p := NewStringValue(nil, nil)
+	f.StringVarP(p, name, shorthand, usage)
 	return p
 }
 
 // String defines a string flag with specified name, default value, and usage string.
 // The return value is the address of a string variable that stores the value of the flag.
-func String(name string, value string, usage string) *string {
-	return CommandLine.StringP(name, "", value, usage)
+func String(name, usage string) *StringValue {
+	return CommandLine.StringP(name, "", usage)
 }
 
 // StringP is like String, but accepts a shorthand letter that can be used after a single dash.
-func StringP(name, shorthand string, value string, usage string) *string {
-	return CommandLine.StringP(name, shorthand, value, usage)
+func StringP(name, shorthand, usage string) *StringValue {
+	return CommandLine.StringP(name, shorthand, usage)
 }

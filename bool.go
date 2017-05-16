@@ -1,94 +1,83 @@
 package pflag
 
-import "strconv"
+import (
+	"reflect"
+	"strconv"
+)
 
-// optional interface to indicate boolean flags that can be
-// supplied without "=value" text
-type boolFlag interface {
-	Value
-	IsBoolFlag() bool
+type BoolValue struct {
+	*DefaultValues
+	Value bool
 }
 
-// -- bool Value
-type boolValue bool
-
-func newBoolValue(val bool, p *bool) *boolValue {
-	*p = val
-	return (*boolValue)(p)
+// A boolean value is false by default and its option-argument is defaults to
+// true.
+func NewBoolValue(defaultValue, defaultArg interface{}) *BoolValue {
+	value, defaults := NewDefaultValues(reflect.TypeOf(true), defaultValue, defaultArg)
+	return &BoolValue{
+		DefaultValues: defaults,
+		Value:         value.(bool),
+	}
 }
 
-func (b *boolValue) Set(s string) error {
+func (b *BoolValue) Set(s string) error {
 	v, err := strconv.ParseBool(s)
-	*b = boolValue(v)
-	return err
+	if err != nil {
+		return err
+	}
+	b.Value = v
+	return nil
 }
 
-func (b *boolValue) Type() string {
+func (b *BoolValue) Type() string {
 	return "bool"
 }
 
-func (b *boolValue) String() string { return strconv.FormatBool(bool(*b)) }
-
-func (b *boolValue) IsBoolFlag() bool { return true }
-
-func boolConv(sval string) (interface{}, error) {
-	return strconv.ParseBool(sval)
+func (b *BoolValue) String() string {
+	return strconv.FormatBool(b.Value)
 }
 
-// GetBool return the bool value of a flag with the given name
-func (f *FlagSet) GetBool(name string) (bool, error) {
-	val, err := f.getFlagType(name, "bool", boolConv)
-	if err != nil {
-		return false, err
-	}
-	return val.(bool), nil
-}
-
-// BoolVar defines a bool flag with specified name, default value, and usage string.
+// BoolVar defines a bool flag with specified name, and usage string.
 // The argument p points to a bool variable in which to store the value of the flag.
-func (f *FlagSet) BoolVar(p *bool, name string, value bool, usage string) {
-	f.BoolVarP(p, name, "", value, usage)
+func (f *FlagSet) BoolVar(p *BoolValue, name string, usage string) {
+	f.BoolVarP(p, name, "", usage)
 }
 
 // BoolVarP is like BoolVar, but accepts a shorthand letter that can be used after a single dash.
-func (f *FlagSet) BoolVarP(p *bool, name, shorthand string, value bool, usage string) {
-	flag := f.VarPF(newBoolValue(value, p), name, shorthand, usage)
-	flag.NoOptDefVal = "true"
+func (f *FlagSet) BoolVarP(p *BoolValue, name, shorthand, usage string) *Flag {
+	return f.VarP(p, name, shorthand, true, usage)
 }
 
-// BoolVar defines a bool flag with specified name, default value, and usage string.
+// BoolVar defines a bool flag with specified name, and usage string.
 // The argument p points to a bool variable in which to store the value of the flag.
-func BoolVar(p *bool, name string, value bool, usage string) {
-	BoolVarP(p, name, "", value, usage)
+func BoolVar(p *BoolValue, name, usage string) {
+	BoolVarP(p, name, "", usage)
 }
 
 // BoolVarP is like BoolVar, but accepts a shorthand letter that can be used after a single dash.
-func BoolVarP(p *bool, name, shorthand string, value bool, usage string) {
-	flag := CommandLine.VarPF(newBoolValue(value, p), name, shorthand, usage)
-	flag.NoOptDefVal = "true"
+func BoolVarP(p *BoolValue, name, shorthand, usage string) *Flag {
+	return CommandLine.VarP(p, name, shorthand, true, usage)
 }
 
 // Bool defines a bool flag with specified name, default value, and usage string.
 // The return value is the address of a bool variable that stores the value of the flag.
-func (f *FlagSet) Bool(name string, value bool, usage string) *bool {
-	return f.BoolP(name, "", value, usage)
+func (f *FlagSet) Bool(name, usage string) (*BoolValue, *Flag) {
+	return f.BoolP(name, "", usage)
 }
 
 // BoolP is like Bool, but accepts a shorthand letter that can be used after a single dash.
-func (f *FlagSet) BoolP(name, shorthand string, value bool, usage string) *bool {
-	p := new(bool)
-	f.BoolVarP(p, name, shorthand, value, usage)
-	return p
+func (f *FlagSet) BoolP(name, shorthand, usage string) (*BoolValue, *Flag) {
+	p := NewBoolValue(false, true)
+	return p, f.BoolVarP(p, name, shorthand, usage)
 }
 
 // Bool defines a bool flag with specified name, default value, and usage string.
 // The return value is the address of a bool variable that stores the value of the flag.
-func Bool(name string, value bool, usage string) *bool {
-	return BoolP(name, "", value, usage)
+func Bool(name, usage string) (*BoolValue, *Flag) {
+	return BoolP(name, "", usage)
 }
 
 // BoolP is like Bool, but accepts a shorthand letter that can be used after a single dash.
-func BoolP(name, shorthand string, value bool, usage string) *bool {
-	b := CommandLine.BoolP(name, shorthand, value, usage)
-	return b
+func BoolP(name, shorthand, usage string) (*BoolValue, *Flag) {
+	return CommandLine.BoolP(name, shorthand, usage)
 }

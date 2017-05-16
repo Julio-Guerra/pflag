@@ -1,148 +1,47 @@
 package pflag
 
-import (
-	"fmt"
-	"io"
-	"net"
-	"strings"
-)
-
-// -- ipSlice Value
-type ipSliceValue struct {
-	value   *[]net.IP
-	changed bool
+type IPSliceValue struct {
+	*SliceValue
 }
 
-func newIPSliceValue(val []net.IP, p *[]net.IP) *ipSliceValue {
-	ipsv := new(ipSliceValue)
-	ipsv.value = p
-	*ipsv.value = val
-	return ipsv
-}
-
-// Set converts, and assigns, the comma-separated IP argument string representation as the []net.IP value of this flag.
-// If Set is called on a flag that already has a []net.IP assigned, the newly converted values will be appended.
-func (s *ipSliceValue) Set(val string) error {
-
-	// remove all quote characters
-	rmQuote := strings.NewReplacer(`"`, "", `'`, "", "`", "")
-
-	// read flag arguments with CSV parser
-	ipStrSlice, err := readAsCSV(rmQuote.Replace(val))
-	if err != nil && err != io.EOF {
-		return err
+func NewIPSliceValue(defaultValue, defaultArg interface{}) *IPSliceValue {
+	return &IPSliceValue{
+		SliceValue: NewSliceValue(defaultValue, defaultArg, func(d interface{}) Value {
+			return NewIPValue(d, nil)
+		}),
 	}
-
-	// parse ip values into slice
-	out := make([]net.IP, 0, len(ipStrSlice))
-	for _, ipStr := range ipStrSlice {
-		ip := net.ParseIP(strings.TrimSpace(ipStr))
-		if ip == nil {
-			return fmt.Errorf("invalid string being converted to IP address: %s", ipStr)
-		}
-		out = append(out, ip)
-	}
-
-	if !s.changed {
-		*s.value = out
-	} else {
-		*s.value = append(*s.value, out...)
-	}
-
-	s.changed = true
-
-	return nil
 }
 
-// Type returns a string that uniquely represents this flag's type.
-func (s *ipSliceValue) Type() string {
-	return "ipSlice"
+func (f *FlagSet) IPSliceVar(p *IPSliceValue, name, usage string) *Flag {
+	return f.IPSliceVarP(p, name, "", usage)
 }
 
-// String defines a "native" format for this net.IP slice flag value.
-func (s *ipSliceValue) String() string {
-
-	ipStrSlice := make([]string, len(*s.value))
-	for i, ip := range *s.value {
-		ipStrSlice[i] = ip.String()
-	}
-
-	out, _ := writeAsCSV(ipStrSlice)
-
-	return "[" + out + "]"
+func (f *FlagSet) IPSliceVarP(p *IPSliceValue, name, shorthand, usage string) *Flag {
+	return f.VarP(p, name, shorthand, true, usage)
 }
 
-func ipSliceConv(val string) (interface{}, error) {
-	val = strings.Trim(val, "[]")
-	// Emtpy string would cause a slice with one (empty) entry
-	if len(val) == 0 {
-		return []net.IP{}, nil
-	}
-	ss := strings.Split(val, ",")
-	out := make([]net.IP, len(ss))
-	for i, sval := range ss {
-		ip := net.ParseIP(strings.TrimSpace(sval))
-		if ip == nil {
-			return nil, fmt.Errorf("invalid string being converted to IP address: %s", sval)
-		}
-		out[i] = ip
-	}
-	return out, nil
+func IPSliceVar(p *IPSliceValue, name, usage string) *Flag {
+	return CommandLine.IPSliceVarP(p, name, "", usage)
 }
 
-// GetIPSlice returns the []net.IP value of a flag with the given name
-func (f *FlagSet) GetIPSlice(name string) ([]net.IP, error) {
-	val, err := f.getFlagType(name, "ipSlice", ipSliceConv)
-	if err != nil {
-		return []net.IP{}, err
-	}
-	return val.([]net.IP), nil
+func IPSliceVarP(p *IPSliceValue, name, shorthand, usage string) *Flag {
+	return CommandLine.IPSliceVarP(p, name, shorthand, usage)
 }
 
-// IPSliceVar defines a ipSlice flag with specified name, default value, and usage string.
-// The argument p points to a []net.IP variable in which to store the value of the flag.
-func (f *FlagSet) IPSliceVar(p *[]net.IP, name string, value []net.IP, usage string) {
-	f.VarP(newIPSliceValue(value, p), name, "", usage)
+func (f *FlagSet) IPSlice(name string, usage string) *IPSliceValue {
+	return f.IPSliceP(name, "", usage)
 }
 
-// IPSliceVarP is like IPSliceVar, but accepts a shorthand letter that can be used after a single dash.
-func (f *FlagSet) IPSliceVarP(p *[]net.IP, name, shorthand string, value []net.IP, usage string) {
-	f.VarP(newIPSliceValue(value, p), name, shorthand, usage)
+func (f *FlagSet) IPSliceP(name, shorthand string, usage string) *IPSliceValue {
+	p := NewIPSliceValue(nil, nil)
+	f.IPSliceVarP(p, name, shorthand, usage)
+	return p
 }
 
-// IPSliceVar defines a []net.IP flag with specified name, default value, and usage string.
-// The argument p points to a []net.IP variable in which to store the value of the flag.
-func IPSliceVar(p *[]net.IP, name string, value []net.IP, usage string) {
-	CommandLine.VarP(newIPSliceValue(value, p), name, "", usage)
+func IPSlice(name string, usage string) *IPSliceValue {
+	return CommandLine.IPSliceP(name, "", usage)
 }
 
-// IPSliceVarP is like IPSliceVar, but accepts a shorthand letter that can be used after a single dash.
-func IPSliceVarP(p *[]net.IP, name, shorthand string, value []net.IP, usage string) {
-	CommandLine.VarP(newIPSliceValue(value, p), name, shorthand, usage)
-}
-
-// IPSlice defines a []net.IP flag with specified name, default value, and usage string.
-// The return value is the address of a []net.IP variable that stores the value of that flag.
-func (f *FlagSet) IPSlice(name string, value []net.IP, usage string) *[]net.IP {
-	p := []net.IP{}
-	f.IPSliceVarP(&p, name, "", value, usage)
-	return &p
-}
-
-// IPSliceP is like IPSlice, but accepts a shorthand letter that can be used after a single dash.
-func (f *FlagSet) IPSliceP(name, shorthand string, value []net.IP, usage string) *[]net.IP {
-	p := []net.IP{}
-	f.IPSliceVarP(&p, name, shorthand, value, usage)
-	return &p
-}
-
-// IPSlice defines a []net.IP flag with specified name, default value, and usage string.
-// The return value is the address of a []net.IP variable that stores the value of the flag.
-func IPSlice(name string, value []net.IP, usage string) *[]net.IP {
-	return CommandLine.IPSliceP(name, "", value, usage)
-}
-
-// IPSliceP is like IPSlice, but accepts a shorthand letter that can be used after a single dash.
-func IPSliceP(name, shorthand string, value []net.IP, usage string) *[]net.IP {
-	return CommandLine.IPSliceP(name, shorthand, value, usage)
+func IPSliceP(name, shorthand, usage string) *IPSliceValue {
+	return CommandLine.IPSliceP(name, shorthand, usage)
 }
