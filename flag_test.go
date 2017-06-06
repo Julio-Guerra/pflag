@@ -476,6 +476,27 @@ func TestPresentHelper(t *testing.T) {
 	}
 }
 
+func TestEmptyArg(t *testing.T) {
+	f := NewFlagSet("test", ContinueOnError)
+	flagValue := f.StringP("test", "t", "string flag")
+
+	flagValue.Value = "dirty"
+	if err := f.Parse([]string{"--test", ""}); err != nil {
+		t.Error("f.Parse() error", err)
+	}
+	if flagValue.Value != "" {
+		t.Errorf("--test flag value should be the empty string")
+	}
+
+	flagValue.Value = "dirty"
+	if err := f.Parse([]string{"-t", ""}); err != nil {
+		t.Error("f.Parse() error", err)
+	}
+	if flagValue.Value != "" {
+		t.Errorf("--test flag value should be the empty string")
+	}
+}
+
 func replaceSeparators(name string, from []string, to string) string {
 	result := name
 	for _, sep := range from {

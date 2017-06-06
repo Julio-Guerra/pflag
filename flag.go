@@ -853,7 +853,7 @@ func (f *FlagSet) parseLongOpt(opt string, args []string, fn ParseFunc) ([]strin
 	} else {
 		if len(split) == 2 { // '--option=arg'
 			optArg = split[1]
-		} else if len(args) > 0 && args[0][0] != '-' { // '--option' 'arg'
+		} else if len(args) > 0 && (args[0] == "" || args[0][0] != '-') { // '--option' 'arg'
 			optArg = args[0]
 			args = args[1:]
 		} else if da := flag.Value.DefaultArg(); da != "" { // '--option'
@@ -891,7 +891,7 @@ func (f *FlagSet) parseShortOpt(opt string, args []string, fn ParseFunc) ([]stri
 			optArg = "true"
 		} else {
 			if len(opt[i+1:]) == 0 { // '-Xo'
-				if len(args) > 0 && args[0][0] != '-' { // '-Xo' 'arg'
+				if len(args) > 0 && (args[0] == "" || args[0][0] != '-') { // '-Xo' 'arg'
 					optArg = args[0]
 					args = args[1:]
 				} else if da := flag.Value.DefaultArg(); da != "" { // '-Xo' '-X'
