@@ -491,27 +491,11 @@ func (f *FlagSet) PrintDefaults() {
 	fmt.Fprint(f.out(), usages)
 }
 
-// UnquoteUsage extracts a back-quoted name from the usage
-// string for a flag and returns it and the un-quoted usage.
-// Given "a `name` to show" it returns ("name", "a name to show").
-// If there are no back quotes, the name is an educated guess of the
-// type of the flag's value, or the empty string if the flag is boolean.
-func UnquoteUsage(flag *Flag) (name string, usage string) {
-	// Look for a back-quoted name, but avoid the strings package.
+// Usage extracts the usage string for a flag and returns it. The name is an
+// educated guess of the type of the flag's value, or the empty string if the
+// flag is boolean.
+func ExtractUsage(flag *Flag) (name string, usage string) {
 	usage = flag.Usage
-	for i := 0; i < len(usage); i++ {
-		if usage[i] == '`' {
-			for j := i + 1; j < len(usage); j++ {
-				if usage[j] == '`' {
-					name = usage[i+1 : j]
-					usage = usage[:i] + name + usage[j+1:]
-					return name, usage
-				}
-			}
-			break // Only one back quote; use type name.
-		}
-	}
-
 	name = flag.Value.Type()
 	switch name {
 	case "bool":
@@ -614,7 +598,7 @@ func (f *FlagSet) FlagUsagesWrapped(cols int) string {
 			line = fmt.Sprintf("      --%s", flag.Name)
 		}
 
-		varname, usage := UnquoteUsage(flag)
+		varname, usage := ExtractUsage(flag)
 		if defVal := flag.Value.DefaultArg(); defVal != "" {
 			switch flag.Value.Type() {
 			case "string":
@@ -638,7 +622,7 @@ func (f *FlagSet) FlagUsagesWrapped(cols int) string {
 		}
 
 		line += usage
-		if noFlagVal := flag.Value.DefaultValue(); noFlagVal != "" {
+		if noFlagVal := flag.Value.DefaultValue(); flag.ExpectArg && noFlagVal != "" {
 			line += fmt.Sprintf(" (defaults to \"%s\")", noFlagVal)
 		}
 

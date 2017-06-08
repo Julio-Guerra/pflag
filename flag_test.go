@@ -946,12 +946,12 @@ func TestHiddenFlagUsage(t *testing.T) {
 	}
 }
 
-const defaultOutput = `      --A                         for bootstrapping, allow 'any' type (defaults to "false")
+const defaultOutput = `      --A                         for bootstrapping, allow 'any' type
       --Alongflagname             disable bounds checking (defaults to "false")
   -C, --CCC                       a boolean defaulting to true (defaults to "true")
-      --D=path                    set relative path for local imports
+      --D=string                  set relative ` + "`path`" + ` for local imports
   -E, --EEE[=1234]                a num with NoOptDefVal (defaults to "4321")
-      --F=number                  a non-zero number (defaults to "2.7")
+      --F=float                   a non-zero ` + "`number`" + ` (defaults to "2.7")
       --G=float                   a float that defaults to zero
       --IP=ip                     IP address with no default
       --IPMask=ipmask             Netmask address with no default
@@ -964,7 +964,7 @@ const defaultOutput = `      --A                         for bootstrapping, allo
       --Z=int                     an int that defaults to zero
       --custom=custom             custom Value implementation
       --customP=custom            a VarP with default (defaults to "10")
-      --maxT=timeout              set timeout for dial
+      --maxT=duration             set ` + "`timeout`" + ` for dial
 `
 
 // Custom value that satisfies the Value interface.
@@ -993,7 +993,7 @@ func TestPrintDefaults(t *testing.T) {
 	fs := NewFlagSet("print defaults test", ContinueOnError)
 	var buf bytes.Buffer
 	fs.SetOutput(&buf)
-	fs.Bool("A", "for bootstrapping, allow 'any' type")
+	fs.StdBool("A", "for bootstrapping, allow 'any' type")
 	fs.Bool("Alongflagname", "disable bounds checking")
 	ccc := NewBoolValue(true, true)
 	fs.BoolVarP(ccc, "CCC", "C", "a boolean defaulting to true")
@@ -1010,8 +1010,8 @@ func TestPrintDefaults(t *testing.T) {
 	fs.Int("Z", "an int that defaults to zero")
 	fs.Duration("maxT", "set `timeout` for dial")
 	fs.StringVar(NewStringValue("foo", "bar"), "ND1", "a string with default values")
-	fs.IntVar(NewIntValue(1234, 4321), "ND2", "a `num` with default values")
-	fs.IntVarP(NewIntValue(4321, 1234), "EEE", "E", "a `num` with NoOptDefVal")
+	fs.IntVar(NewIntValue(1234, 4321), "ND2", "a num with default values")
+	fs.IntVarP(NewIntValue(4321, 1234), "EEE", "E", "a num with NoOptDefVal")
 	fs.StringSlice("StringSlice", "string slice with zero default")
 
 	var cv customValue
