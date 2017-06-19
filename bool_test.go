@@ -179,3 +179,104 @@ func TestBoolP(t *testing.T) {
 		t.Errorf("expect c=false got c=%v", c.Value)
 	}
 }
+
+func TestStdBool(t *testing.T) {
+	{
+		f := NewFlagSet("test", ContinueOnError)
+		bool, boolFlag := f.StdBoolP("bool", "b", "standard boolean option not expecting an argument")
+		str := NewStringValue("", "default argument")
+		strFlag := f.StringVarP(str, "string", "s", "standard string option expecting an argument")
+
+		err := f.Parse([]string{"-bsmystr"})
+		if err != nil {
+			t.Fatal("expected no error; got", err)
+		}
+		if boolFlag.Present == false || bool.Value == false {
+			t.Fatal("expected --bool=true - got", bool.Value, "instead")
+		}
+		if strFlag.Present == false || str.Value != "mystr" {
+			t.Fatal("expected -s mystr - got", str.Value, "instead")
+		}
+	}
+
+	{
+		f := NewFlagSet("test", ContinueOnError)
+		bool, boolFlag := f.StdBoolP("bool", "b", "standard boolean option not expecting an argument")
+		str := NewStringValue("", "default argument")
+		strFlag := f.StringVarP(str, "string", "s", "standard string option expecting an argument")
+
+		err := f.Parse([]string{"-bs", "mystr"})
+		if err != nil {
+			t.Fatal("expected no error; got", err)
+		}
+		if boolFlag.Present == false || bool.Value == false {
+			t.Fatal("expected --bool=true - got", bool.Value, "instead")
+		}
+		if strFlag.Present == false || str.Value != "mystr" {
+			t.Fatal("expected -s mystr - got", str.Value, "instead")
+		}
+	}
+
+	{
+		f := NewFlagSet("test", ContinueOnError)
+		bool, boolFlag := f.StdBoolP("bool", "b", "standard boolean option not expecting an argument")
+		str := NewStringValue("", "default argument")
+		strFlag := f.StringVarP(str, "string", "s", "standard string option expecting an argument")
+
+		err := f.Parse([]string{"-sb", "mystr"})
+		if err != nil {
+			t.Fatal("expected no error; got", err)
+		}
+		if boolFlag.Present == true || bool.Value == true {
+			t.Fatal("expected --bool=false - got", bool.Value, "instead")
+		}
+		if strFlag.Present == false || str.Value != "b" {
+			t.Fatal("expected -s mystr - got", str.Value, "instead")
+		}
+		if len(f.Args()) != 1 || f.Args()[0] != "mystr" {
+			t.Fatal("expected mystr argument")
+		}
+	}
+
+	{
+		f := NewFlagSet("test", ContinueOnError)
+		bool, boolFlag := f.StdBoolP("bool", "b", "standard boolean option not expecting an argument")
+		str := NewStringValue("", "default argument")
+		strFlag := f.StringVarP(str, "string", "s", "standard string option expecting an argument")
+
+		err := f.Parse([]string{"-s", "-b", "mystr"})
+		if err != nil {
+			t.Fatal("expected no error; got", err)
+		}
+		if boolFlag.Present == false || bool.Value == false {
+			t.Fatal("expected --bool=false - got", bool.Value, "instead")
+		}
+		if strFlag.Present == false || str.Value != "default argument" {
+			t.Fatal("expected -s - got", str.Value, "instead")
+		}
+		if len(f.Args()) != 1 || f.Args()[0] != "mystr" {
+			t.Fatal("expected mystr argument")
+		}
+	}
+
+	{
+		f := NewFlagSet("test", ContinueOnError)
+		bool, boolFlag := f.StdBoolP("bool", "b", "standard boolean option not expecting an argument")
+		str := NewStringValue("", "default argument")
+		strFlag := f.StringVarP(str, "string", "s", "standard string option expecting an argument")
+
+		err := f.Parse([]string{"-bs", "--", "mystr"})
+		if err != nil {
+			t.Fatal("expected no error; got", err)
+		}
+		if boolFlag.Present == false || bool.Value == false {
+			t.Fatal("expected --bool=false - got", bool.Value, "instead")
+		}
+		if strFlag.Present == false || str.Value != "default argument" {
+			t.Fatal("expected -s - got", str.Value, "instead")
+		}
+		if len(f.Args()) != 1 || f.Args()[0] != "mystr" {
+			t.Fatal("expected mystr argument")
+		}
+	}
+}
