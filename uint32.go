@@ -39,7 +39,7 @@ func (f *UInt32Value) String() string {
 // UInt32Var defines a uint32 flag with specified name, default value, and usage string.
 // The argument p pouint32s to a uint32 variable in which to store the value of the flag.
 func (f *FlagSet) UInt32Var(p *UInt32Value, name, usage string) *Flag {
-	return f.UInt32Var(p, name, usage)
+	return f.UInt32VarP(p, name, "", usage)
 }
 
 // UInt32VarP is like UInt32Var, but accepts a shorthand letter that can be used after a single dash.

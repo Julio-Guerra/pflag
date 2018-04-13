@@ -39,7 +39,7 @@ func (f *UInt64Value) String() string {
 // UInt64Var defines a uint64 flag with specified name, default value, and usage string.
 // The argument p pouint64s to a uint64 variable in which to store the value of the flag.
 func (f *FlagSet) UInt64Var(p *UInt64Value, name, usage string) *Flag {
-	return f.UInt64Var(p, name, usage)
+	return f.UInt64VarP(p, name, "", usage)
 }
 
 // UInt64VarP is like UInt64Var, but accepts a shorthand letter that can be used after a single dash.
