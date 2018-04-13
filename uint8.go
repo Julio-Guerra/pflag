@@ -39,7 +39,7 @@ func (f *UInt8Value) String() string {
 // UInt8Var defines a uint8 flag with specified name, default value, and usage string.
 // The argument p pouint8s to a uint8 variable in which to store the value of the flag.
 func (f *FlagSet) UInt8Var(p *UInt8Value, name, usage string) *Flag {
-	return f.UInt8Var(p, name, usage)
+	return f.UInt8VarP(p, "", name, usage)
 }
 
 // UInt8VarP is like UInt8Var, but accepts a shorthand letter that can be used after a single dash.
